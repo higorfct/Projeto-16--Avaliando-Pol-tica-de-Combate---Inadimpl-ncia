@@ -9,9 +9,16 @@ Um banco implementou uma política focada em reduzir a inadimplência através d
 **Efeito colateral:** tais políticas podem gerar relaxamento excessivo dos critérios de crédito, oferecendo crédito a clientes de maior risco e gerando efeito contrário ao desejado.
 
 ---
-
 ## Problema de Negócio
 A pergunta central é: **a política foi efetiva em diminuir a inadimplência?**
+
+---
+
+## Análise Exploratória de Dados (EDA)
+
+<img width="862" height="811" alt="image" src="https://github.com/user-attachments/assets/204bdd11-d5ef-4e51-b284-c1616b658f62" />
+
+As variáveis parecem estar bem equilibradas para ambos os grupos, o que é essencial para garantir que não determinem os resultados. 
 
 ---
 
@@ -20,14 +27,16 @@ Para solucionar o problema , utilizamos:
 - **Diff-in-Diff (DiD)**: aproveitando o painel de dados antes e depois da política;
 - **Propensity Score Matching (PSM)**: para balancear covariáveis que diferem entre grupos de tratamento e controle.
 
-**Covariáveis incluídas nos modelos**:
-- Idade
-- Renda
-- Histórico de crédito
-- Número de dependentes
-- Tempo como cliente
+**Variável Dependente:** `Inadimplência`
   
-Essa combinação permite estimar o efeito causal da política mesmo com características desbalanceadas entre os grupos.
+**Covariáveis incluídas nos modelos**:
+- `Idade`
+- `Renda`
+- `Histórico de Crédito`
+- `Número de Dependentes`
+- `Tempo como Cliente`
+  
+Essa combinação permite estimar o efeito causal da política garantindo que os resultados não sejam influenciados por quaisquer vieses .
 
 ---
 
