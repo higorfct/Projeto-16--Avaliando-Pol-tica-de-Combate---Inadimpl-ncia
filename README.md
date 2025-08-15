@@ -24,7 +24,7 @@ As variáveis parecem estar bem equilibradas para ambos os grupos, o que é esse
 
 ## Solução do Problema
 Para solucionar o problema , utilizamos:
-- **Diff-in-Diff (DiD)**: aproveitando o painel de dados antes e depois da política;
+- **Diff-in-Diff (DiD)**: para estimar o impacto causal capturando os períodos anterior e posterior à política;
 - **Propensity Score Matching (PSM)**: para balancear covariáveis que diferem entre grupos de tratamento e controle.
 
 **Variável Dependente:** `Inadimplência`
@@ -36,7 +36,9 @@ Para solucionar o problema , utilizamos:
 - `Número de Dependentes`
 - `Tempo como Cliente`
   
-Essa combinação permite estimar o efeito causal da política garantindo que os resultados não sejam influenciados por quaisquer vieses .
+Essa combinação permite estimar o efeito causal da política garantindo que os resultados não sejam influenciados por quaisquer vieses.
+
+OBS: para que o modelo diff-in-diff seja válido, é necessário que a hipótese de tendências paralelas - de que na ausência do tratamento os valores da variável de interesse sejam os mesmos para os grupos de tratamento e controle - seja atendida. Esta hipótese será testada com efeito placebo.
 
 ---
 
