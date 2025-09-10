@@ -1,180 +1,170 @@
 # ============================================================
-# 1. CARREGAR PACOTES
+# 1. LOADING PACKAGES
 # ============================================================
-library(dplyr)       # Manipulação de dados
-library(tidyr)       # Transformação de formato (wide ↔ long)
-library(ggplot2)     # Visualizações
+library(dplyr)       # Data manipulation
+library(tidyr)       # Data reshaping (wide ↔ long)
+library(ggplot2)     # Visualizations
 library(MatchIt)     # Propensity Score Matching
-library(fixest)      # Modelos econométricos, Diff-in-Diff
-library(cowplot)     # Combinar gráficos
-library(readxl)      # Ler arquivos Excel
+library(fixest)      # Econometric models, Diff-in-Diff
+library(cowplot)     # Combine plots
+library(readxl)      # Read Excel files
+library(broom)       #tidy model output
+library(kableExtra)  # Pretty tables
+# ============================================================
+# 2. IMPORTING DATA
+# ============================================================
+data <- read_excel("data_delinquency.xlsx")  # Reads the wide dataset (one row per client)
+View(data)  # Initial inspection only
 
 # ============================================================
-# 2. IMPORTAR DADOS
+# 3. EXPLORATORY ANALYSIS
 # ============================================================
-data <- read_excel("dados_inadimplencia.xlsx")  # Lê a base wide (uma linha por cliente)
-View(data)  # Apenas para inspeção inicial
-
-# ============================================================
-# 3. ANÁLISE EXPLORATÓRIA
-# ============================================================
-# Histogramas para comparar variáveis entre grupos antes do matching
-p1 <- ggplot(data, aes(x = idade, fill = grupo)) +
+# Histograms to compare variables between groups before matching
+p1 <- ggplot(data, aes(x = age, fill = group)) +
   geom_histogram(position = "dodge", bins = 30) +
-  labs(title = "Distribuição de Idade por Grupo")
+  labs(title = "Age Distribution by Group")
 
-p2 <- ggplot(data, aes(x = renda, fill = grupo)) +
+p2 <- ggplot(data, aes(x = income, fill = group)) +
   geom_histogram(position = "dodge", bins = 30) +
-  labs(title = "Distribuição de Renda por Grupo")
+  labs(title = "Income Distribution by Group")
 
-p3 <- ggplot(data, aes(x = historico_credito, fill = grupo)) +
+p3 <- ggplot(data, aes(x = credit_history, fill = group)) +
   geom_histogram(position = "dodge", bins = 30) +
-  labs(title = "Distribuição de Histórico de Crédito por Grupo")
+  labs(title = "Credit History Distribution by Group")
 
-plot_grid(p1, p2, p3, ncol = 1)  # Combina os gráficos
+plot_grid(p1, p2, p3, ncol = 1)  # Combine plots
 
 # ============================================================
-# 4. TRANSFORMAÇÃO PARA FORMATO DE PAINEL (long)
+# 4. TRANSFORMATION TO PANEL FORMAT (long)4
 # ============================================================
 data_long <- data %>%
-  select(cliente_id, grupo, idade, renda, historico_credito, dependentes, tempo_cliente,
-         periodo_antes, periodo_depois) %>%
+  select(client_id, group, age, income, credit_history, dependents, client_time,
+         period_before, period_after) %>%
   pivot_longer(
-    cols = starts_with("periodo"),         # Coloca periodo_antes e periodo_depois em uma única coluna
-    names_to = "periodo",                  # Nome da nova coluna de período
-    values_to = "inadimplencia"             # Nome da coluna com valores de inadimplência
+    cols = starts_with("period"),       # Put period_before and period_after into one column
+    names_to = "period",                # Name of the new period column
+    values_to = "delinquency"           # Column with default values
   ) %>%
   mutate(
-    depois_dummy = ifelse(periodo == "periodo_depois", 1, 0),  # 1 se pós-política
-    tratamento_dummy = ifelse(grupo == "tratamento", 1, 0)     # 1 se no grupo tratado
+    after_dummy = ifelse(period == "period_after", 1, 0),     # 1 if post-policy
+    treatment_dummy = ifelse(group == "treatment", 1, 0)      # 1 if in treatment group
   )
 
+
 # ============================================================
-# 5. PROPENSITY SCORE MATCHING (antes da política)
+# 5. PROPENSITY SCORE MATCHING (pre-policy rows only)
 # ============================================================
 psm_model <- matchit(
-  tratamento_dummy ~ idade + renda + historico_credito + dependentes + tempo_cliente, 
-  data = data_long %>% filter(depois_dummy == 0),  # Matching só no período antes
-  method = "nearest",  # Pareamento vizinho mais próximo
-  ratio = 1            # Um controle para cada tratado
+  treatment_dummy ~ age + income + credit_history + dependents + client_time,
+  data = data_long %>% filter(after_dummy == 0),  # matching on pre-policy observations
+  method = "nearest",
+  ratio = 1
 )
 
-matched_data <- match.data(psm_model)   # Extrai dados pareados
-matched_ids <- matched_data$cliente_id  # Pega IDs pareados
+matched_data <- match.data(psm_model)   # matched dataset from MatchIt
+matched_ids  <- matched_data$client_id  # matched client IDs
 
-# Mantém apenas os IDs que foram pareados
-data_matched_long <- data_long %>% filter(cliente_id %in% matched_ids)
+# Keep only matched clients in the long format
+data_matched_long <- data_long %>% filter(client_id %in% matched_ids)
+summary(psm_model)
+# ============================================================
+# 6. DIFF-IN-DIFF ESTIMATION
+# ============================================================
+diff_model <-feols(delinquency ~ treatment_dummy * after_dummy + age + income +
+                     credit_history + dependents + client_time,
+                   data = data_matched_long
 
-# ============================================================
-# 6. ESTIMAÇÃO DIFF-IN-DIFF
-# ============================================================
-diff_model <- feols(
-  inadimplencia ~ tratamento_dummy * depois_dummy + idade + renda +
-    historico_credito + dependentes + tempo_cliente,
-  data = data_matched_long
 )
-summary(diff_model)  # O coef. da interação é o efeito causal estimado
+summary(diff_model)  # interaction coef = estimated causal effect
 
 # ============================================================
-# 7. VISUALIZAÇÃO DO EFEITO
+# 7. VISUALIZING THE EFFECT
 # ============================================================
 effect_plot <- data_matched_long %>%
-  group_by(grupo, periodo) %>%
-  summarise(taxa_inadimplencia = mean(inadimplencia), .groups = "drop") %>%
-  ggplot(aes(x = periodo, y = taxa_inadimplencia, color = grupo, group = grupo)) +
+  group_by(group, period) %>%
+  summarise(default_rate = mean(delinquency, na.rm = TRUE), .groups = "drop") %>%
+  ggplot(aes(x = period, y = default_rate, color = group, group = group)) +
   geom_line(size = 1) +
   geom_point(size = 2) +
-  labs(title = "Taxa de Inadimplência por Grupo e Período",
-       x = "Período", y = "Taxa média de inadimplência")
+  labs(title = "Delinquency Rate by Group and Period",
+       x = "Period", y = "Average Default Rate")
 
 print(effect_plot)
 
 # ============================================================
-# 8. TESTES DE ROBUSTEZ COMPLETO
+# 8. ROBUSTNESS CHECKS
 # ============================================================
 
 ## 8.1 Caliper Matching
 psm_caliper <- matchit(
-  tratamento_dummy ~ idade + renda + historico_credito + dependentes + tempo_cliente, 
-  data = data_long %>% filter(depois_dummy == 0),
-  method = "nearest", caliper = 0.1
+  treatment_dummy ~ age + income + credit_history + dependents + client_time,
+  data = data_long %>% filter(after_dummy == 0),
+  method = "nearest",
+  caliper = 0.1
 )
-summary(psm_caliper)  # Ver balanceamento
+summary(psm_caliper)
 
-# Extrai dados pareados
 matched_caliper <- match.data(psm_caliper)
-data_caliper_long <- data_long %>% filter(cliente_id %in% matched_caliper$cliente_id)
+data_caliper_long <- data_long %>% filter(client_id %in% matched_caliper$client_id)
 
-# Diff-in-Diff sobre dados pareados com caliper
 robust_model1 <- feols(
-  inadimplencia ~ tratamento_dummy * depois_dummy + idade + renda +
-    historico_credito + dependentes + tempo_cliente,
+  delinquency ~ treatment_dummy * after_dummy + age + income +
+    credit_history + dependents + client_time,
   data = data_caliper_long
 )
-summary(robust_model1)  # Coef. da interação = efeito da política
+summary(robust_model1)
 
-## 8.2 Matching com variáveis alternativas
+## 8.2 Matching with alternative variables
 psm_alt <- matchit(
-  tratamento_dummy ~ idade + historico_credito + dependentes,
-  data = data_long %>% filter(depois_dummy == 0),
+  treatment_dummy ~ age + credit_history + dependents,
+  data = data_long %>% filter(after_dummy == 0),
   method = "nearest"
 )
-summary(psm_alt)  # Ver balanceamento
+summary(psm_alt)
 
-# Extrai dados pareados
 matched_alt <- match.data(psm_alt)
-data_alt_long <- data_long %>% filter(cliente_id %in% matched_alt$cliente_id)
+data_alt_long <- data_long %>% filter(client_id %in% matched_alt$client_id)
 
-# Diff-in-Diff sobre dados pareados com variáveis alternativas
 robust_model2 <- feols(
-  inadimplencia ~ tratamento_dummy * depois_dummy + idade +
-    historico_credito + dependentes,
+  delinquency ~ treatment_dummy * after_dummy + age + credit_history + dependents,
   data = data_alt_long
 )
-summary(robust_model2)  # Coef. da interação = efeito da política
+summary(robust_model2)
 
-## 8.3 Placebo test (apenas pré-política)
-placebo_data <- data_long %>% filter(periodo == "periodo_antes")
+## 8.3 Placebo test (pre-policy only)
+placebo_data <- data_long %>% filter(period == "period_before")
 placebo_model <- feols(
-  inadimplencia ~ tratamento_dummy * depois_dummy + idade + renda +
-    historico_credito + dependentes + tempo_cliente,
+  delinquency ~ treatment_dummy * after_dummy + age + income +
+    credit_history + dependents + client_time,
   data = placebo_data
 )
-summary(placebo_model)  # Se der efeito, pode haver viés
---------------------------------------------------------------------------------
+summary(placebo_model)
 
-## Parte 2 - Resumindo os Resultados em uma tabela 
-
-library(broom)       # Converte modelos estatísticos em data frames tidy, facilitando a extração de coeficientes, erros padrão e p-values
-library(dplyr)       # Permite manipulação de dados de forma intuitiva (filtros, seleções, agrupamentos, junções)
-library(kableExtra)  # Gera tabelas bonitas e formatadas, compatíveis com GitHub, HTML e PDF
-
-
-# Supondo que diff_model seja o modelo Diff-in-Diff com covariáveis
-# Transformar os coeficientes em um tibble
+# ============================================================
+# 9. SUMMARIZE COEFFICIENTS (table)
+# ============================================================
 coef_table <- tidy(diff_model) %>%
   select(term, estimate, p.value) %>%
   mutate(
-    interpretacao = case_when(
-      term == "(Intercept)" ~ "Taxa média inadimplência grupo controle antes da política",
-      term == "tratamento_dummy" ~ "Diferença inicial entre grupos antes da política",
-      term == "depois_dummy" ~ "Mudança no grupo controle após a política",
-      term == "idade" ~ "Idade não influencia significativamente",
-      term == "renda" ~ "Renda não significativa",
-      term == "historico_credito" ~ "Histórico de crédito não significativo",
-      term == "dependentes" ~ "Mais dependentes → maior inadimplência",
-      term == "tempo_cliente" ~ "Tempo como cliente não significativo",
-      term == "tratamento_dummy:depois_dummy" ~ "Efeito causal da política: aumento da inadimplência",
+    interpretation = case_when(
+      term == "(Intercept)" ~ "Average delinquency rate for control group before policy",
+      term == "treatment_dummy" ~ "Initial difference between groups before policy",
+      term == "after_dummy" ~ "Change in control group after policy",
+      term == "age" ~ "Age not significant",
+      term == "income" ~ "Income not significant",
+      term == "credit_history" ~ "Credit history not significant",
+      term == "dependents" ~ "More dependents → higher delinquency",
+      term == "client_time" ~ "Time as client not significant",
+      term == "treatment_dummy:after_dummy" ~ "Causal effect of policy: increase in delinquency",
       TRUE ~ ""
     )
   )
 
-# Criar tabela compacta
 coef_table %>%
   kable(
-    col.names = c("Variável", "Estimativa", "p-valor", "Interpretação rápida"),
+    col.names = c("Variable", "Estimate", "p-value", "Quick Interpretation"),
     digits = 4,
-    caption = "Resumo dos resultados com modelo Diff-in-Diff e testes de robustez"
+    caption = "Summary of results with Diff-in-Diff model and robustness tests"
   ) %>%
   kable_styling(full_width = F, position = "center", bootstrap_options = c("striped", "hover"))
 
