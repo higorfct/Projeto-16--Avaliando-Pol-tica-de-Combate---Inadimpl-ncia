@@ -17,7 +17,7 @@ The central question is: **was the policy effective in reducing loan default?**
 
 ## Exploratory Data Analysis (EDA)
 
-<img width="862" height="811" alt="image" src="https://github.com/user-attachments/assets/204bdd11-d5ef-4e51-b284-c1616b658f62" />
+<img width="862" height="420" alt="image" src="https://github.com/user-attachments/assets/0527248f-d2ef-4f99-9e18-4d780eca9c6b" />
 
 The variables appear to be well balanced for both groups, which is essential to ensure they do not determine the results.
 
