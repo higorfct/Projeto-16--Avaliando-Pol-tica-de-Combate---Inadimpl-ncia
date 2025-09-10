@@ -1,17 +1,17 @@
-# Project 16: Evaluating a Policy to Combat Loan Default
+# Project 16: Evaluating a Policy to Combat Loan Delinquency
 
 ## Context
-A bank implemented a policy focused on reducing default through three main mechanisms:
+A bank implemented a policy focused on reducing delinquency through three main mechanisms:
 - **Renegotiation and restructuring of existing debts**: offering longer terms, partial debt forgiveness, and reduced interest rates to delinquent clients;  
 - **Conditional credit offers to clients with regular status**;  
-- **Active monitoring and support** for clients at risk of default.  
+- **Active monitoring and support** for clients at risk of delinquency.  
 
 **Side effect:** such policies may lead to excessive relaxation of credit criteria, granting credit to riskier clients and creating the opposite effect of what was intended.
 
 ---
 
 ## Business Problem
-The central question is: **was the policy effective in reducing loan default?**
+The central question is: **was the policy effective in reducing loan delinquency?**
 
 ---
 
@@ -28,7 +28,7 @@ To solve the problem, we used:
 - **Difference-in-Differences (DiD):** to estimate the causal impact by capturing the pre- and post-policy periods;  
 - **Propensity Score Matching (PSM):** to balance covariates that differ between treatment and control groups.  
 
-**Dependent Variable:** `Default`  
+**Dependent Variable:** `Delinquency`  
 
 **Covariates included in the models**:
 - `Age`  
@@ -49,7 +49,7 @@ This combination allows us to estimate the causal effect of the policy while ens
 
 ### Effect on default
 - The interaction coefficient `treatment_dummy:post_dummy` from the model with covariates is **0.061** (significant, p < 0.001).  
-- This indicates an **increase of 6.1 percentage points in default** in the treatment group due to the policy.  
+- This indicates an **increase of 6.1 percentage points in delinquency** in the treatment group due to the policy.  
 
 ### Financial impact
 Considering:  
@@ -64,14 +64,14 @@ The estimated effect of the policy is:
 
 ### Robustness
 Robustness checks confirm the result:  
-- **PSM with caliper:** policy effect still positive (higher default)  
+- **PSM with caliper:** policy effect still positive (higher delinquency)  
 - **PSM with alternative variables:** similar effect  
 - **Placebo test:** no effect detected in the pre-policy period, supporting the model’s validity.
 
 ---
 
 ## Conclusion
-The policy **did not reduce loan default** and led to additional financial losses. The main reason is that renegotiation measures and credit concessions ended up relaxing risk criteria, allowing higher-risk clients to continue or resume borrowing, thereby increasing default rates.
+The policy **did not reduce loan delinquency** and led to additional financial losses. The main reason is that renegotiation measures and credit concessions ended up relaxing risk criteria, allowing higher-risk clients to continue or resume borrowing, thereby increasing delinquency rates.
 
 ---
 
