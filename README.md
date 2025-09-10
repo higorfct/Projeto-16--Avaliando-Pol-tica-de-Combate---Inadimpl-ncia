@@ -44,8 +44,8 @@ This combination allows us to estimate the causal effect of the policy while ens
 ---
 
 ## Results and Interpretation
+<img width="1033" height="583" alt="image" src="https://github.com/user-attachments/assets/559f3525-8619-4911-8bc6-e951dc67373a" />
 
-<img width="860" height="707" alt="image" src="https://github.com/user-attachments/assets/f95b92e8-3cd9-4fb6-800d-4348f7695fa7" />
 
 ### Effect on default
 - The interaction coefficient `treatment_dummy:post_dummy` from the model with covariates is **0.061** (significant, p < 0.001).  
